@@ -1,0 +1,30 @@
+#!/bin/bash
+
+if [[ $# -ne 1 ]]; then
+	echo 1>&2 "USAGE: $0 <prefix>";
+	exit 1;
+fi
+
+TOTAL="0";
+PREFIX="$1";
+
+while read NAME; do
+	USED="$(zfs get -Hp used ${NAME} | awk '{ print $3 }')";
+	if echo "${NAME}" | grep "^${PREFIX}" > /dev/null; then
+		TOTAL="$(( ${TOTAL} + ${USED} ))";
+	fi
+done < <(zfs list -H -o name -t snapshot);
+
+DIGITS="$(echo -n ${TOTAL} | wc -c)";
+
+if [[ ${DIGITS} -ge 12 ]]; then
+	TOTAL="$(printf %.2f $(echo ${TOTAL} / 1024^4 | bc -l)) TiB";
+elif [[ ${DIGITS} -ge 9 ]]; then
+	TOTAL="$(printf %.2f $(echo ${TOTAL} / 1024^3 | bc -l)) GiB";
+elif [[ ${DIGITS} -ge 6 ]]; then
+	TOTAL="$(printf %.2f $(echo ${TOTAL} / 1024^2 | bc -l)) MiB";
+elif [[ ${DIGITS} -ge 3 ]]; then
+	TOTAL="$(printf %.2f $(echo ${TOTAL} / 1024 | bc -l)) KiB";
+fi
+
+echo "${PREFIX} total = ${TOTAL}";
